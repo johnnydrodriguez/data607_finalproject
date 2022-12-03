@@ -1,0 +1,266 @@
+---
+title: "Fuel Consumption Cost Difference in EV, GAS and PHEV Vehicles"
+author: "Johnny Rodriguez"
+date: "2022-11-20"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+    highlight: pygments
+    theme: cerulean
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE , warning = FALSE, message = FALSE)
+
+#
+
+# Load the libraries for this analysis
+library("readxl")
+library("tidyverse")
+library(reshape)
+library(dplyr)
+library(tidyr)
+library (ggrepel)
+library(ggthemes)
+library(here)
+```
+
+<br/>
+
+### Final Project Summary
+
+For our final project, the team will analyze fuel consumption differences between electric (EV), gasoline and hybrid vehicles.  Specifically, we will address the question - **What are the cost differences - and savings - for each type of vehicle?**  Finally, we will (attempt to) implement a shiny app that allows users to select two vehicles to compare fuel consumption and cost differences between the selected vehicles.
+
+The primary dataset for vehicle fuel consumption will be sourced from https://www.fueleconomy.gov/feg/download.shtml  - specifically, the 2022 vehicle fuel data:
+https://www.fueleconomy.gov/feg/epadata/22data.zip
+
+Fuel cost data will be sourced from https://www.eia.gov/petroleum/gasdiesel.  The weekly price data is located here:
+https://www.eia.gov/petroleum/gasdiesel/xls/pswrgvwall.xls
+
+<br/>
+
+### Final Project Team Members
+
+* Sanielle Worrell
+* Vladimir Nimchenko
+* Jose Rodriguez
+* Johnny Rodriguez
+
+
+### Downloading, Reading and Cleaning an Excel file
+> Working with a complex spreadsheet that needed substanstial cleanup
+
+```{r echo = TRUE , warning = FALSE, message = FALSE}
+
+#Download and read the excel file
+url <- "https://github.com/johnnydrodriguez/data607_finalproject/blob/main/2022_FE_Guide.xlsx?raw=true"
+destfile <- here("myfile.xlsx")
+download.file(url, destfile)
+Gas_df <- read_excel(here("myfile.xlsx"), sheet = "22")
+
+#create data frame for the gas vehicles
+Gas_df = read_excel(here("myfile.xlsx"), sheet = "22")[,c('Model Year','Mfr Name','Division', 
+        'Carline','Index (Model Type Index)','Eng Displ','# Cyl','Transmission',
+        'City FE (Guide) - Conventional Fuel','Hwy FE (Guide) - Conventional Fuel','Comb FE (Guide) - Conventional Fuel',
+        'Air Aspiration Method Desc','Trans','Trans Desc','# Gears','Drive Sys','Drive Desc',
+        'Fuel Usage Desc - Conventional Fuel','Annual Fuel1 Cost - Conventional Fuel',
+        'Fuel2 EPA Calculated Annual Fuel Cost - Alternative Fuel','Carline Class Desc',
+        'EPA FE Label Dataset ID','MFR Calculated Gas Guzzler MPG',
+        '$ You Save over 5 years (amount saved in fuel costs over 5 years - on label)',
+        '$ You Spend over 5 years (increased amount spent in fuel costs over 5 years - on label)',
+        'Comb CO2 Rounded Adjusted (as shown on FE Label)')]
+
+#replacing all column names in the Gas_df data frame which have white space with underscore for filtering purposes
+names(Gas_df)<-str_replace_all(names(Gas_df), c(" " = "_" ))
+
+
+#create data frame for plug-in electric vehicles
+Phev_df <-  read_excel(here("myfile.xlsx"), sheet = '22 PHEVs',skip = 4)[,c('Model Yr  (gold fill means release date is after today\'s date)',
+            'Mfr Name','Division', 'Carline','Index (Model Type Index)','Eng Displ','# Cyl','Transmission',
+            'City FE (Guide) - Conventional Fuel','Hwy FE (Guide) - Conventional Fuel','Comb FE (Guide) - Conventional Fuel',
+            'Air Aspiration Method Desc','Trans','Trans Desc','# Gears','Drive Sys','Drive Desc',
+            'Fuel Usage Desc - Conventional Fuel','Annual Fuel1 Cost - Conventional Fuel','Fuel2 EPA Calculated Annual Fuel Cost - Alternative Fuel',
+            'Carline Class Desc','EPA FE Label Dataset ID','MFR Calculated Gas Guzzler MPG',
+            '$ You Save over 5 years (amount saved in fuel costs over 5 years - on label)',
+            '$ You Spend over 5 years (increased amount spent in fuel costs over 5 years - on label)','Comb CO2 Rounded Adjusted (as shown on FE Label)')]
+
+
+#create data frame for electric vehicle
+Ev_df = read_excel(here("myfile.xlsx") ,sheet = '22 EVs',skip = 8)[,c('Model Yr','Mfr Name','Division', 
+        'Carline','Index (Model Type Index)','Eng Displ','# Cyl','Transmission','City FE (Guide) - Conventional Fuel',
+        'Hwy FE (Guide) - Conventional Fuel','Comb FE (Guide) - Conventional Fuel','Air Aspiration Method Desc',
+        'Trans','Trans Desc','# Gears','Drive Sys','Drive Desc','Fuel Usage Desc - Conventional Fuel',
+        'Annual Fuel1 Cost - Conventional Fuel','Fuel2 EPA Calculated Annual Fuel Cost - Alternative Fuel',
+        'Carline Class Desc','EPA FE Label Dataset ID','MFR Calculated Gas Guzzler MPG',
+        '$ You Save over 5 years (amount saved in fuel costs over 5 years - on label)',
+        '$ You Spend over 5 years (increased amount spent in fuel costs over 5 years - on label)','Comb CO2 Rounded Adjusted (as shown on FE Label)','Fuel Unit - Conventional Fuel')]
+
+
+
+# Adding a "Vehicle_Type" column to all three data frames to use to identify what sheet the info came from
+Gas_df <-cbind(Vehicle_Type = 'Gas', Gas_df)
+Phev_df <-cbind(Vehicle_Type = 'Phev', Phev_df)
+Ev_df <-cbind(Vehicle_Type = 'Ev', Ev_df)
+
+# In Phev, I only retrieve rows where model year is '2022'. Since, my column names have spaces, to filter I   would first  replace white space with underscore
+
+#replacing all column names in the Phev_df data frame which have white space with underscore for filtering   purposes
+names(Phev_df)<-str_replace_all(names(Phev_df), c(" " = "_" ))
+
+# filtering the  Phev_df data frame to retrieve only 2022 model year
+Phev_df <- Phev_df %>%
+  filter(`Model_Yr__(gold_fill_means_release_date_is_after_today's_date)` == "2022")
+
+#replacing all column names in the Phev_df data frame which have white space with underscore for filtering   purposes
+names(Ev_df)<-str_replace_all(names(Ev_df), c(" " = "_" ))
+# filtering the  EV_df data frame to retrieve only rows  with KW-HR R
+Ev_df <- Ev_df %>%
+  filter(`Fuel_Unit_-_Conventional_Fuel` == "KW-HR/100Miles")
+
+```
+
+
+
+### Combining the data frames for analysis
+
+```{r}
+
+#replacing underscore with white space to return column names to original state
+
+names(Gas_df)<-str_replace_all(names(Gas_df), c("_" = " " ))
+
+#Extracting the needed columns from the Gas_df data frame for analysis
+
+Gas_df <- select(Gas_df, c('Vehicle Type','Mfr Name','Division', 'Carline','Index (Model Type Index)','Eng Displ','# Cyl','Transmission','City FE (Guide) - Conventional Fuel','Hwy FE (Guide) - Conventional Fuel','Comb FE (Guide) - Conventional Fuel','Air Aspiration Method Desc','Trans','Trans Desc','# Gears','Drive Sys','Drive Desc','Fuel Usage Desc - Conventional Fuel','Annual Fuel1 Cost - Conventional Fuel','Fuel2 EPA Calculated Annual Fuel Cost - Alternative Fuel','Carline Class Desc','EPA FE Label Dataset ID','MFR Calculated Gas Guzzler MPG','$ You Save over 5 years (amount saved in fuel costs over 5 years - on label)','$ You Spend over 5 years (increased amount spent in fuel costs over 5 years - on label)','Comb CO2 Rounded Adjusted (as shown on FE Label)'))
+
+#replacing underscore with white space to return column names to original state
+
+names(Phev_df)<-str_replace_all(names(Phev_df), c("_" = " " ))
+
+#Extracting the needed columns from the Phev_df data frame for analysis
+
+Phev_df <- select(Phev_df, c('Vehicle Type','Mfr Name','Division', 'Carline','Index (Model Type Index)','Eng Displ','# Cyl','Transmission','City FE (Guide) - Conventional Fuel','Hwy FE (Guide) - Conventional Fuel','Comb FE (Guide) - Conventional Fuel','Air Aspiration Method Desc','Trans','Trans Desc','# Gears','Drive Sys','Drive Desc','Fuel Usage Desc - Conventional Fuel','Annual Fuel1 Cost - Conventional Fuel','Fuel2 EPA Calculated Annual Fuel Cost - Alternative Fuel','Carline Class Desc','EPA FE Label Dataset ID','MFR Calculated Gas Guzzler MPG','$ You Save over 5 years (amount saved in fuel costs over 5 years - on label)','$ You Spend over 5 years (increased amount spent in fuel costs over 5 years - on label)','Comb CO2 Rounded Adjusted (as shown on FE Label)'))
+
+
+#replacing underscore with white space to return column names to original state
+
+names(Ev_df)<-str_replace_all(names(Ev_df), c("_" = " " ))
+
+#Extracting the needed columns from the Ev_df data frame for analysis
+
+Ev_df <- select(Ev_df, c('Vehicle Type','Mfr Name','Division', 'Carline','Index (Model Type Index)','Eng Displ','# Cyl','Transmission','City FE (Guide) - Conventional Fuel','Hwy FE (Guide) - Conventional Fuel','Comb FE (Guide) - Conventional Fuel','Air Aspiration Method Desc','Trans','Trans Desc','# Gears','Drive Sys','Drive Desc','Fuel Usage Desc - Conventional Fuel', 'Annual Fuel1 Cost - Conventional Fuel','Fuel2 EPA Calculated Annual Fuel Cost - Alternative Fuel','Carline Class Desc','EPA FE Label Dataset ID','MFR Calculated Gas Guzzler MPG','$ You Save over 5 years (amount saved in fuel costs over 5 years - on label)' ,'$ You Spend over 5 years (increased amount spent in fuel costs over 5 years - on label)','Comb CO2 Rounded Adjusted (as shown on FE Label)'))
+
+#combine all data frames into one for analysis
+df_list <- list(Gas_df,Phev_df,Ev_df)
+combined_df <- merge_recurse(df_list)
+View(combined_df)
+
+#Remove duplicates
+combined_df<- combined_df %>% distinct()
+
+#Rename columns
+names(combined_df) %<>% stringr::str_replace_all("\\s","_") %>% tolower
+```
+
+### Analysis
+
+We wanted to answer the below questions to determine overall are Electric Vehicles (EV) cost effective against combustion engines? More details on the guide that was used to perform the analysis and interpret the data can be found at the below link. <https://www.fueleconomy.gov/feg/pdfs/guides/FEG2022.pdf>
+
+#### What is the difference in cost between the vehicle class type? (van, trucks for ev, gas, etc). 
+Based on the below EVs had an lower cost, based on the annual fuel cost, followed by PHEVs then gas vehicles. In the case of each vehicle type - fuel referred to different sources as noted below:
+
+-   Gas Vehicles - Gasoline (Premium Unleaded Recommended,Premium Unleaded Required, Regular Unleaded Recommended )
+-   PHEVs - Gasoline (Premium Unleaded Recommended,Premium Unleaded Required,Regular Unleaded Recommended)
+-   EVs - Electricity
+
+```{r}
+# Group by car types related to EVs and PHEVs 
+combined_df %>% 
+  group_by(vehicle_type, carline_class_desc) %>% 
+  filter(carline_class_desc %in% c("Compact Cars", "Midsize Cars","Large Cars", "Subcompact Cars")) %>% 
+  summarize(yearly_avg_cost = round(mean(`annual_fuel1_cost_-_conventional_fuel`))) %>% 
+  ggplot(aes(x = reorder(vehicle_type,yearly_avg_cost), y = yearly_avg_cost, group = carline_class_desc, fill = carline_class_desc)) + 
+  geom_label(aes(label = yearly_avg_cost),position = position_dodge(width = 1),vjust = -.2, size = 2,fill = "white") +
+  geom_bar(stat = "identity", color = NA, position = position_dodge(width = 0.9))+
+    theme_bw()+scale_fill_brewer(palette = "Dark2")+ 
+  labs(title = "Yearly Average Cost by Car type", x = "Car Type", y = "Yearly Average Cost") 
+```
+
+#### What is the difference in cost between transmission types ? (automative, cvt) - 
+Based on the below EV cars with an continuous variable transmissions had the lowest cost followed by PHEVs then Gas vehicles. Based on research, it was noted that "Continuously variable transmissions (CVTs) can change seamlessly through an infinite number of"gears." Transmissions with more gears allow the engine to run at its most efficient speed more often, improving fuel economy."
+
+```{r}
+# Group by most common transmission types related to Gas, EVs and PHEVs 
+combined_df %>% 
+  group_by(vehicle_type, trans_desc) %>% 
+  filter(trans_desc %in% c("Automatic", "Continuously Variable","Semi-Automatic", "Automated Manual")) %>% 
+  summarize(m = round(mean(`annual_fuel1_cost_-_conventional_fuel`))) %>% 
+  
+  ggplot(aes(x = reorder(vehicle_type, m), y = m, group = trans_desc, fill = trans_desc, color = trans_desc)) +
+  geom_line(stat = "identity", size = 1)+ 
+  geom_label_repel(aes(label = m),nudge_y = 1, size = 2,fill = "black", color = "white") +
+    theme_bw()+scale_colour_brewer(palette = "BrBG") + 
+  labs(title = "Average cost by car transmission type", x = "Car Type", y = "Average Cost") 
+```
+
+#### Number of vehicles in each class? 
+Based on the below gas vehicle types significantly outnumbered the amount of Electric and PHEV vehicles which may skewed the analysis.
+
+```{r}
+combined_df %>% 
+group_by(vehicle_type, carline_class_desc) %>% 
+summarize(count=n())%>% 
+top_n(5)%>% 
+ggplot(aes(x = vehicle_type, y= count, group = carline_class_desc, fill = carline_class_desc)) +
+  geom_bar(stat = "identity", color = "black") +  
+     scale_fill_ptol() +
+  theme_minimal()+
+  labs(title = "Number of cars in top 5 car description types", x = "Car Type", y = "Count") 
+  
+```
+
+#### Comparison between fuel efficiency and the different vehicle types (highway, city, combined mileage)
+
+Reviewing city mileage fuel efficiency by vehicle types and car manufacturers, EV show a higher fuel mileage even for luxury cars such as BMW compared to Gas Vehicles. For example, Toyota city fuel mileage was even lower than that of a BMW electric car. PHEV city mileage was surprisingly low and almost in line with that of Gas vehicles. 
+```{r}
+combined_df %>% 
+group_by(vehicle_type, mfr_name, carline_class_desc) %>% 
+filter(vehicle_type %in% c("Ev")) %>%
+summarize(avg_city_ef = round(mean(`city_fe_(guide)_-_conventional_fuel`)))%>%
+arrange(desc(mfr_name),.by_group=TRUE) %>%
+  top_n(3, avg_city_ef)%>%
+ggplot(aes(x= vehicle_type, y = avg_city_ef)) + 
+  geom_point(position=position_jitter(h=0.1, w=0.1),
+             shape = 21, alpha = 0.5, size = 3) + geom_label_repel(aes(label = avg_city_ef),nudge_y = 1, size = 2,fill = "black", color = "white") +
+  facet_wrap(mfr_name~., )+ theme_bw()+
+  labs(title = "Electric Vehicles Average City Mileage by Car Type", x = "Car Type", y = "Mileage")
+```
+```{r}
+combined_df %>% 
+group_by(vehicle_type, mfr_name, carline_class_desc) %>% 
+filter(vehicle_type %in% c("Gas")) %>%
+summarize(avg_city_ef = round(mean(`city_fe_(guide)_-_conventional_fuel`)))%>%
+arrange(desc(mfr_name),.by_group=TRUE) %>%
+top_n(3,avg_city_ef)%>%
+ggplot(aes(x= vehicle_type, y = avg_city_ef)) + 
+geom_point(position=position_jitter(h=0.1, w=0.1),shape = 21, alpha = 0.5, size = 3) + geom_label_repel(aes(label = avg_city_ef),nudge_y = 1, size = 2,fill = "black", color = "white") +
+  facet_wrap(mfr_name~., )+ theme_bw()+
+  labs(title = "Gas Vehicles Average City Mileage by Car Type", x = "Car Type", y = "Mileage")
+```
+```{r}
+combined_df %>% 
+group_by(vehicle_type, mfr_name, carline_class_desc) %>% 
+filter(vehicle_type %in% c("Phev")) %>%
+summarize(avg_city_ef = round(mean(`city_fe_(guide)_-_conventional_fuel`)))%>%
+arrange(desc(mfr_name),.by_group=TRUE) %>%
+top_n(3,avg_city_ef)%>%
+ggplot(aes(x= vehicle_type, y = avg_city_ef)) + 
+geom_point(position=position_jitter(h=0.1, w=0.1),shape = 21, alpha = 0.5, size = 3) + geom_label_repel(aes(label = avg_city_ef),nudge_y = 1, size = 2,fill = "black", color = "white") +
+  facet_wrap(mfr_name~., )+ theme_bw()+
+  labs(title = "PHEV Vehicles Average City Mileage by Car Type", x = "Car Type", y = "Mileage")
+```
+
