@@ -1,0 +1,92 @@
+# DATA 607 - Final Project
+
+### Vladimir Nimchenko
+
+
+### Cleaning Up, Loading into Data Frames and Filtering the Data
+```{r} 
+# load the read from Excel Library
+library("readxl")
+library("tidyverse")
+library(reshape)
+
+# read in the needed columns from the "Gas" sheet of the Excel file into a data frame
+
+Gas_file_path = "C:/Users/Staff/Dropbox/MS in Data Science/DATA 607 - Data Acquisition and Management/Final Project/2022 FE Guide.xlsx"
+
+Gas_df = read_excel(Gas_file_path,sheet = '22')[,c('Model Year','Mfr Name','Division', 'Carline','Index (Model Type Index)','Eng Displ','# Cyl','Transmission','City FE (Guide) - Conventional Fuel','Hwy FE (Guide) - Conventional Fuel','Comb FE (Guide) - Conventional Fuel','Air Aspiration Method Desc','Trans','Trans Desc','# Gears','Drive Sys','Drive Desc','Annual Fuel1 Cost - Conventional Fuel','Fuel2 EPA Calculated Annual Fuel Cost - Alternative Fuel','Carline Class Desc','EPA FE Label Dataset ID','MFR Calculated Gas Guzzler MPG','$ You Spend over 5 years (increased amount spent in fuel costs over 5 years - on label)','Comb CO2 Rounded Adjusted (as shown on FE Label)')]
+
+#replacing all column names in the Gas_df data frame which have white space with underscore for filtering        purposes
+names(Gas_df)<-str_replace_all(names(Gas_df), c(" " = "_" ))
+
+# read in the needed columns from the "PHEV" sheet of the Excel file into a data frame
+
+Phev_file_path = "C:/Users/Staff/Dropbox/MS in Data Science/DATA 607 - Data Acquisition and Management/Final Project/2022 FE Guide.xlsx"
+
+Phev_df = read_excel(Phev_file_path,sheet = '22 PHEVs',skip = 4)[,c('Model Yr  (gold fill means release date is after today\'s date)','Mfr Name','Division', 'Carline','Index (Model Type Index)','Eng Displ','# Cyl','Transmission','City FE (Guide) - Conventional Fuel','Hwy FE (Guide) - Conventional Fuel','Comb FE (Guide) - Conventional Fuel','Air Aspiration Method Desc','Trans','Trans Desc','# Gears','Drive Sys','Drive Desc','Annual Fuel1 Cost - Conventional Fuel','Fuel2 EPA Calculated Annual Fuel Cost - Alternative Fuel','Carline Class Desc','EPA FE Label Dataset ID','MFR Calculated Gas Guzzler MPG','$ You Spend over 5 years (increased amount spent in fuel costs over 5 years - on label)','Comb CO2 Rounded Adjusted (as shown on FE Label)')]
+
+
+# read in the needed columns from the "EV" sheet of the Excel file into a data frame
+
+Ev_df_file_path = "C:/Users/Staff/Dropbox/MS in Data Science/DATA 607 - Data Acquisition and Management/Final Project/2022 FE Guide.xlsx"
+
+Ev_df = read_excel(Ev_df_file_path ,sheet = '22 EVs',skip = 8)[,c('Model Yr','Mfr Name','Division', 'Carline','Index (Model Type Index)','Eng Displ','# Cyl','Transmission','City FE (Guide) - Conventional Fuel','Hwy FE (Guide) - Conventional Fuel','Comb FE (Guide) - Conventional Fuel','Air Aspiration Method Desc','Trans','Trans Desc','# Gears','Drive Sys','Drive Desc','Annual Fuel1 Cost - Conventional Fuel','Fuel2 EPA Calculated Annual Fuel Cost - Alternative Fuel','Carline Class Desc','EPA FE Label Dataset ID','MFR Calculated Gas Guzzler MPG','$ You Spend over 5 years (increased amount spent in fuel costs over 5 years - on label)','Comb CO2 Rounded Adjusted (as shown on FE Label)','Fuel Unit - Conventional Fuel')]
+
+# Adding a "Vehicle_Type" column to all three data frames to use to identify what sheet the info came from
+Gas_df <-cbind(Vehicle_Type = 'Gas', Gas_df)
+Phev_df <-cbind(Vehicle_Type = 'Phev', Phev_df)
+Ev_df <-cbind(Vehicle_Type = 'Ev', Ev_df)
+
+# In Phev, I only retrieve rows where model year is '2022'. Since, my column names have spaces, to filter I   would first  replace white space with underscore
+
+#replacing all column names in the Phev_df data frame which have white space with underscore for filtering   purposes
+names(Phev_df)<-str_replace_all(names(Phev_df), c(" " = "_" ))
+
+# filtering the  Phev_df data frame to retrieve only 2022 model year
+Phev_df <- Phev_df %>%
+  filter(`Model_Yr__(gold_fill_means_release_date_is_after_today's_date)` == "2022")
+
+#replacing all column names in the Phev_df data frame which have white space with underscore for filtering   purposes
+names(Ev_df)<-str_replace_all(names(Ev_df), c(" " = "_" ))
+# filtering the  EV_df data frame to retrieve only rows  with KW-HR R
+Ev_df <- Ev_df %>%
+  filter(`Fuel_Unit_-_Conventional_Fuel` == "KW-HR/100Miles")
+
+```
+
+
+
+### Combining the data frames for analysis
+
+```{r} 
+
+#replacing underscore with white space to return column names to original state
+
+names(Gas_df)<-str_replace_all(names(Gas_df), c("_" = " " ))
+
+#Extracting the needed columns from the Gas_df data frame for analysis
+
+Gas_df <- select(Gas_df, c('Vehicle Type','Mfr Name','Division', 'Carline','Index (Model Type Index)','Eng Displ','# Cyl','Transmission','City FE (Guide) - Conventional Fuel','Hwy FE (Guide) - Conventional Fuel','Comb FE (Guide) - Conventional Fuel','Air Aspiration Method Desc','Trans','Trans Desc','# Gears','Drive Sys','Drive Desc','Annual Fuel1 Cost - Conventional Fuel','Fuel2 EPA Calculated Annual Fuel Cost - Alternative Fuel','Carline Class Desc','EPA FE Label Dataset ID','MFR Calculated Gas Guzzler MPG','$ You Spend over 5 years (increased amount spent in fuel costs over 5 years - on label)','Comb CO2 Rounded Adjusted (as shown on FE Label)'))
+
+#replacing underscore with white space to return column names to original state
+
+names(Phev_df)<-str_replace_all(names(Phev_df), c("_" = " " ))
+
+#Extracting the needed columns from the Phev_df data frame for analysis
+
+Phev_df <- select(Phev_df, c('Vehicle Type','Mfr Name','Division', 'Carline','Index (Model Type Index)','Eng Displ','# Cyl','Transmission','City FE (Guide) - Conventional Fuel','Hwy FE (Guide) - Conventional Fuel','Comb FE (Guide) - Conventional Fuel','Air Aspiration Method Desc','Trans','Trans Desc','# Gears','Drive Sys','Drive Desc','Annual Fuel1 Cost - Conventional Fuel','Fuel2 EPA Calculated Annual Fuel Cost - Alternative Fuel','Carline Class Desc','EPA FE Label Dataset ID','MFR Calculated Gas Guzzler MPG','$ You Spend over 5 years (increased amount spent in fuel costs over 5 years - on label)','Comb CO2 Rounded Adjusted (as shown on FE Label)'))
+
+
+#replacing underscore with white space to return column names to original state
+
+names(Ev_df)<-str_replace_all(names(Ev_df), c("_" = " " ))
+
+#Extracting the needed columns from the Ev_df data frame for analysis
+
+Ev_df <- select(Ev_df, c('Vehicle Type','Mfr Name','Division', 'Carline','Index (Model Type Index)','Eng Displ','# Cyl','Transmission','City FE (Guide) - Conventional Fuel','Hwy FE (Guide) - Conventional Fuel','Comb FE (Guide) - Conventional Fuel','Air Aspiration Method Desc','Trans','Trans Desc','# Gears','Drive Sys','Drive Desc','Annual Fuel1 Cost - Conventional Fuel','Fuel2 EPA Calculated Annual Fuel Cost - Alternative Fuel','Carline Class Desc','EPA FE Label Dataset ID','MFR Calculated Gas Guzzler MPG','$ You Spend over 5 years (increased amount spent in fuel costs over 5 years - on label)','Comb CO2 Rounded Adjusted (as shown on FE Label)'))
+
+#combine all data frames into one for analysis
+df_list <- list(Gas_df,Phev_df,Ev_df)
+combined_df <- merge_recurse(df_list)
+View(combined_df)
+```
