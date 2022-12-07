@@ -3,7 +3,7 @@ title: "Fuel Efficiency & Cost in EV, GAS and PHEV Vehicles"
 date: "2022-11-20"
 output: 
   html_document:
-    code_folding: "hide"
+    code_folding: hide
     toc: true
     toc_float: false
     toc_depth: 4
@@ -32,27 +32,27 @@ library(GGally)
 
 ### Project Summary
 
-For our final project, the team will analyze fuel consumption differences between electric (EV), gasoline and hybrid vehicles.  Specifically, we will address the question - **What are the cost differences - and savings - for each type of vehicle?**  Finally, we will (attempt to) implement a shiny app that allows users to select two vehicles to compare fuel consumption and cost differences between the selected vehicles.
+Theam will analyze fuel consumption differences between electric (EV), gasoline and plug in hybrid electric (PHEV) vehicles.  Specifically, we will address the question - **What are the costs and features for Electric (EV) and Plugin Electric Hybrid (PHEV) vehicles versus gas vehicles that contribute to fuel efficiency?**  We'll analyze cost difference and perform a multiple regression to identify car features which contribute the fuel efficient raing.  Finally, we implement a shiny app that allows users to select a vehicle in each class to compare cost differences between the selected vehicles.
 
-The primary dataset for vehicle fuel consumption will be sourced from https://www.fueleconomy.gov/feg/download.shtml  - specifically, the 2022 vehicle fuel data:
+The primary dataset for vehicle fuel consumption will be sourced from https://www.fueleconomy.gov/feg/download.shtml . We used the the 2022 vehicle fuel data:
 https://www.fueleconomy.gov/feg/epadata/22data.zip
 
-Fuel cost data will be sourced from https://www.eia.gov/petroleum/gasdiesel.  The weekly price data is located here:
-https://www.eia.gov/petroleum/gasdiesel/xls/pswrgvwall.xls
 
-<br/>
-
-### Final Project Team Members
+#### Project Team Members
 
 * Sanielle Worrell
 * Vladimir Nimchenko
 * Jose Rodriguez
 * Johnny Rodriguez
 
+
 <br/>
 
 ### Downloading, Reading and Cleaning an Excel file
-> Working with a complex spreadsheet that needed substanstial cleanup
+
+* Working with a complex Excel spreadsheet with 3 tabs, 160+ columns
+* The data  was converted into 3 dataframes: EV, PHEV, GAS
+
 
 ```{r echo = TRUE , warning = FALSE, message = FALSE}
 
@@ -123,12 +123,14 @@ Ev_df <- Ev_df %>%
 
 ```
 
-
 <br/>
 
 ### Combining the data frames for analysis
 
-```{r}
+* A combined dataframe was used for the analysis and shiny app
+* Further cleanup/transformation needed to get this data into a suitable format
+
+```{r echo = TRUE , warning = FALSE, message = FALSE}
 
 #replacing underscore with white space to return column names to original state
 
@@ -166,14 +168,15 @@ combined_df<- combined_df %>% distinct()
 names(combined_df) %<>% stringr::str_replace_all("\\s","_") %>% tolower
 
 glimpse(combined_df)
+
 ```
 
 <br/>
 
-
 ### Analysis
 
 We wanted to answer the below questions to determine overall are Electric Vehicles (EV) cost effective against combustion engines? More details on the guide that was used to perform the analysis and interpret the data can be found at the below link. <https://www.fueleconomy.gov/feg/pdfs/guides/FEG2022.pdf>
+
 
 #### What is the difference in cost between the vehicle class type? (van, trucks for ev, gas, etc). 
 Based on the below EVs had an lower cost, based on the annual fuel cost, followed by PHEVs then gas vehicles. In the case of each vehicle type - fuel referred to different sources as noted below:
@@ -182,7 +185,8 @@ Based on the below EVs had an lower cost, based on the annual fuel cost, followe
 -   PHEVs - Gasoline (Premium Unleaded Recommended,Premium Unleaded Required,Regular Unleaded Recommended)
 -   EVs - Electricity
 
-```{r}
+```{r echo = TRUE , warning = FALSE, message = FALSE}
+
 # Group by car types related to EVs and PHEVs 
 combined_df %>% 
   group_by(vehicle_type, carline_class_desc) %>% 
@@ -192,13 +196,13 @@ combined_df %>%
   geom_label(aes(label = yearly_avg_cost),position = position_dodge(width = 1),vjust = -.2, size = 2,fill = "white") +
   geom_bar(stat = "identity", color = NA, position = position_dodge(width = 0.9))+
     theme_bw()+scale_fill_brewer(palette = "Dark2")+ 
-  labs(title = "Yearly Average Cost by Car type", x = "Car Type", y = "Yearly Average Cost") 
+  labs(title = "Yearly Average Cost by Car Type", x = "Car Type", y = "Yearly Average Cost") 
 ```
 
 #### What is the difference in cost between transmission types ? (automative, cvt) - 
-Based on the below EV cars with an continuous variable transmissions had the lowest cost followed by PHEVs then Gas vehicles. Based on research, it was noted that "Continuously variable transmissions (CVTs) can change seamlessly through an infinite number of"gears." Transmissions with more gears allow the engine to run at its most efficient speed more often, improving fuel economy."
+Based on the below EV cars with an continuous variable transmissions had the lowest cost followed by PHEVs then Gas vehicles. Based on research, it was noted that "Continuously variable transmissions (CVTs) can change seamlessly through an infinite number of "gears." Transmissions with more gears allow the engine to run at its most efficient speed more often, improving fuel economy."
 
-```{r}
+```{r echo = TRUE , warning = FALSE, message = FALSE}
 # Group by most common transmission types related to Gas, EVs and PHEVs 
 combined_df %>% 
   group_by(vehicle_type, trans_desc) %>% 
@@ -215,7 +219,7 @@ combined_df %>%
 #### Number of vehicles in each class? 
 Based on the below gas vehicle types significantly outnumbered the amount of Electric and PHEV vehicles which may skewed the analysis.
 
-```{r}
+```{r echo = TRUE , warning = FALSE, message = FALSE}
 combined_df %>% 
 group_by(vehicle_type, carline_class_desc) %>% 
 summarize(count=n())%>% 
@@ -231,7 +235,9 @@ ggplot(aes(x = vehicle_type, y= count, group = carline_class_desc, fill = carlin
 #### Comparison between fuel efficiency and the different vehicle types (highway, city, combined mileage)
 
 Reviewing city mileage fuel efficiency by vehicle types and car manufacturers, EV show a higher fuel mileage even for luxury cars such as BMW compared to Gas Vehicles. For example, Toyota city fuel mileage was even lower than that of a BMW electric car. PHEV city mileage was surprisingly low and almost in line with that of Gas vehicles. 
-```{r}
+
+
+```{r echo = TRUE , warning = FALSE, message = FALSE}
 combined_df %>% 
 group_by(vehicle_type, mfr_name, carline_class_desc) %>% 
 filter(vehicle_type %in% c("Ev")) %>%
@@ -245,7 +251,8 @@ ggplot(aes(x= vehicle_type, y = avg_city_ef)) +
   labs(title = "Electric Vehicles Average City Mileage by Car Type", x = "Car Type", y = "Mileage")
 ```
 
-```{r}
+
+```{r echo = TRUE , warning = FALSE, message = FALSE}
 combined_df %>% 
 group_by(vehicle_type, mfr_name, carline_class_desc) %>% 
 filter(vehicle_type %in% c("Gas")) %>%
@@ -258,7 +265,8 @@ geom_point(position=position_jitter(h=0.1, w=0.1),shape = 21, alpha = 0.5, size 
   labs(title = "Gas Vehicles Average City Mileage by Car Type", x = "Car Type", y = "Mileage")
 ```
 
-```{r}
+
+```{r echo = TRUE , warning = FALSE, message = FALSE}
 combined_df %>% 
 group_by(vehicle_type, mfr_name, carline_class_desc) %>% 
 filter(vehicle_type %in% c("Phev")) %>%
@@ -270,29 +278,34 @@ geom_point(position=position_jitter(h=0.1, w=0.1),shape = 21, alpha = 0.5, size 
   facet_wrap(mfr_name~., )+ theme_bw()+
   labs(title = "PHEV Vehicles Average City Mileage by Car Type", x = "Car Type", y = "Mileage")
 ```
+
+
 <br/>
 
 ### Idenitifying the variables that make for an efficient vehicle
 
-All vehicles are given a fuel efficiency score by the EPA.  What variables contribute to a fuel efficient vehicle?
+All vehicles are given a fuel efficiency (FE) rating by the EPA.
 
 
-* EPA Fuel Efficiency Score - which rates FE on a scale of 1-10 for all vehicles.
-* Performed a multuple linear regression to identify which variable were highly correlated and predict the FE rating.
-* We only looked at vehicles that the consumed gas to keep the analysis simple 
+* EPA Fuel Efficiency Rating - rates FE on a scale of 1-10 for all vehicles.
+* Performed a multiple regression to identify which variables were correlated and predict the FE rating.
+* We only looked at vehicles that consumed gas (gas & phev)  to keep the analysis simple
+* EVs are all rated 10, do not have the same common features as gas or phev vehicles and the fuel conversion between mpg and kwh is beyond the scope of this analysis
+* EV configuration made it difficult for an apples to apples comparison and we weren't sure how to correct for this
 
 
-### Multiple Linear Regression Approach
+#### Multiple Regression Approach
+
 Selected 11 variables from the data set
 
-1. Checked for a linear relationships for each variable
-2. Checked for residual distribution for each variable
-3. Checked for collinearity
-4. Isolated the variables that contribute to the Fuel Efficiency Rating
+1. Checked for a linear relationships for each predicator variable against the response variable
+2. Checked for collinearity among the predictor variables
+3. Isolated the predictor variables that contribute to the Fuel Efficiency Rating response variable
 
-### Subset the data to create a model data set.
+#### Subset the data to create a model data set.
 
-The predictor variables we picked are:
+The predictor variables we select are:
+
 * engine displacement
 * number of cylinders
 * transmission type
@@ -306,7 +319,7 @@ The predictor variables we picked are:
 * engine air aspiration type
 
 
-```{r}
+```{r echo = TRUE , warning = FALSE, message = FALSE}
 
 model <- combined_df %>% 
   select(division, carline, eng_displ, '#_cyl', trans, `comb_fe_(guide)_-_conventional_fuel`, `#_gears`, drive_desc, `comb_co2_rounded_adjusted_(as_shown_on_fe_label)`,carline_class_desc,`fe_rating_(1-10_rating_on_label)`, air_aspiration_method_desc, `city_fe_(guide)_-_conventional_fuel` , `hwy_fe_(guide)_-_conventional_fuel`) %>% 
@@ -331,31 +344,34 @@ model$engine_displacement <- as.numeric(as.character(model$engine_displacement))
 
 ```
 
-<br/>
 
-### Distribution of the Fuel Efficiency Ratings
+
+#### Distribution of the Fuel Efficiency Ratings
+
 * An EPA FE Rating of 10 is the best efficiency rated granted a vehicle
 * Excludes all EV's as they are all rated 10, lack similar characteristics and skew the model
-* FE ratings are nearly normally distributed for Gas and PHEV's and look to average around 5 (middle rating)
+* FE ratings are nearly normally distributed for Gas and PHEV's and average around 5 (middle rating)
 
-```{r}
+```{r echo = TRUE , warning = FALSE, message = FALSE}
 #Plot Fuel Efficiency Rating Distribution
 ggplot(model, aes(x=fe_rating)) + 
   geom_histogram(binwidth = 1) +
-  ggtitle("Distribution of Fuel Efficiency Rating")+
+  ggtitle("Distribution of Fuel Efficiency Rating for Gas & PHEV")+
   theme_minimal()
 
 ```
-<br/>
 
-### Check for linear relationship between predictor and response variable
+
+
+#### Check linear relationships between predictor and response variables
+
 * Mutiple regression requires that there be a linear relationship between the various predictor variables and the response variable (FE Rating).
 * Here I check each of the variables for the linear relationship
 * Ideally we would drop any variables that do not show this linear relationship
 
-<br/> In this case, we would consider dropping the transmission type variable.
+In this case, we would consider dropping the transmission type variable.
 
-```{r}
+```{r echo = TRUE , warning = FALSE, message = FALSE}
 
 library(gridExtra)
 
@@ -413,17 +429,22 @@ grid.arrange(a,b,c,d,e,f,g,h,   ncol = 3)
 
 ```
 
-<br/>
 
-### Check for collinearity using Variable Inflation Factor (VIF)
+
+#### Check for collinearity using Variable Inflation Factor (VIF)
+
+
 * VIF is a calculation that allows us to check for collinearity among the predictor variables.
 * VIF values greater than 5 indicate collinearity among variables
-* Ideally we would drop the redundant variables
-
-<br/> In this case, combined, city and highway are collinear variables.  Ideally we would drop 2 redundant variable and keep only one.  
+* Ideally we drop the redundant variables
 
 
-```{r}
+In this case, combined, city and highway are collinear variables.  We drop 2 redundant variables and keep only one.  
+
+
+
+
+```{r echo = TRUE , warning = FALSE, message = FALSE}
 
 
 #install.packages("caTools", 
@@ -447,15 +468,17 @@ barplot(vif_values, main = "VIF Values",las=2, horiz = FALSE, col = "steelblue")
 abline(h = 5, lwd = 3, lty = 2)
 
 ```
-<br/>
 
-### Check coefficients and P values
+
+
+#### Check coefficients and P values
+
 * We look at the p values to determine what variables are statistically significant -- p < .05
 * We look at all of the variables at once
-* Ideally, we would only keep variables where p < .05
+* Ideally, we only keep variables where p < .05
 
 
-```{r}
+```{r echo = TRUE , warning = FALSE, message = FALSE}
 
 #Calc coeff and p values for all variables without the redundant variables
 m_full <- lm(fe_rating ~ engine_displacement + no_cylinders + transmission + combined_mpg+ no_gears + drive_train
@@ -468,43 +491,45 @@ myco$coefficients[,c(1, 4)]
 
 ```
 
-<br/>
 
-### Profile of a fuel efficient non EV vehicle
+#### Profile of a Fuel Efficient Vehicle (Non EV) 
+
+To recap:
 
 1. Eliminated predictor variables that did not indicate a linear relationship with the response variable
 2. Eliminated collinearity issues by dropping redundant variables
 3. Kept variables with statistically significant p values (p < .05)
 
 
-The profile of a gas or plug-in vehicle that predicts the efficiency rating: 
+The profile of a gas or plug-in hybrid vehicle that predicts the efficiency rating: 
 
-* a decreasing number of engine cylinders
-* an increasing combined mpg
+* decreasing number of engine cylinders
+* increasing combined mpg
 * does not have a part-time 4 wheel drive train
-* a decreasing weight of C02 emissions
-* not a cab chassis truck
-* is a 2WD drive minivan
+* decreasing weight of C02 emissions
+* is a smaller non truck vehicle (as indicated by cab chassis variable)
+* is 2 wheel drive vehicle 
 
 **Equation of the efficiency rating multiple regression prediction**
 
-<br/>
 
-> y = 4.0620502 + -0.0368559(no_cylinders) +  0.1308305(combined_mpg) + -0.1480398(drive_trainPart-time 4-Wheel Drive) + -0.0052151(C02_emmission_grams) + -0.3040990(car_sizeSpecial Purpose Vehicle cab chassis) + 0.4503982(car_sizeSpecial Purpose Vehicle, minivan 2WD)
+y = 4.0620502 + -0.0368559(no_cylinders) +  0.1308305(combined_mpg) + -0.1480398(drive_trainPart-time 4-Wheel Drive) + -0.0052151(C02_emmission_grams) + -0.3040990(car_sizeSpecial Purpose Vehicle cab chassis) + 0.4503982(car_sizeSpecial Purpose Vehicle, minivan 2WD)
 
-<br/>
 
-### Shiny App - Compare Fuel Costs
+
+### Shiny App - Compare Fuel Costs Over Time For Each Car Type
 We can use the shiny app to continue comparing efficiency and cost between vehicles.
 
 
 https://sj8vjw-jose-rodriguez.shinyapps.io/2022VehFuelConsumptionCost/
 
-<br/>
+
+
 
 ### Conclusion
 
-* Fuel and vehicle information reported by car manufacturers and summarized by the EPA is complex.
-* As a consumer, it is difficult to evaluate efficiency and cost due to the shear number of vehicle types and variables.
-* Further analysis and tools are needed to be able to identify the vehicle variables that matter and compare them.
+* As expected, EV's are more cost and fuel efficient -- but the cost differential increases over the long term -- and is the better value.
+* Generally speaking, paying the premium for an EV may only make sense if you plan on keeping it over the long team the long term or work as a driver (taxi, Uber, etc)
+* In the market for a fuel & cost efficient vehicle? **Buy an EV** -- but otherwise look for a **smaller 2 wheel drive vehicle with the highest MPG available with a Continuously Variable Transmission (CVT).**
+
 
