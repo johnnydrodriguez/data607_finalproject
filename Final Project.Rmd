@@ -60,7 +60,7 @@ https://www.fueleconomy.gov/feg/epadata/22data.zip
 url <- "https://github.com/johnnydrodriguez/data607_finalproject/blob/main/2022_FE_Guide.xlsx?raw=true"
 destfile <- here("myfile.xlsx")
 download.file(url, destfile)
-Gas_df <- read_excel(here("myfile.xlsx"), sheet = "22")
+
 
 #create data frame for the gas vehicles
 Gas_df = read_excel(here("myfile.xlsx"), sheet = "22")[,c('Model Year','Mfr Name','Division', 
